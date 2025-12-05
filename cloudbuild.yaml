@@ -1,0 +1,55 @@
+# Cloud Build configuration untuk CI/CD
+steps:
+  # Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/veo3-bypass:$COMMIT_SHA', '.']
+  
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/veo3-bypass:$COMMIT_SHA']
+  
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'veo3-bypass-service'
+      - '--image=gcr.io/$PROJECT_ID/veo3-bypass:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=2Gi'
+      - '--cpu=2'
+      - '--set-env-vars=VERTEX_PROJECT_ID=$PROJECT_ID'
+      - '--quiet'
+  
+  # Setup Vertex AI endpoint
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        # Upload model to Vertex AI
+        gcloud ai models upload \
+          --region=us-central1 \
+          --display-name="veo3-bypass-model" \
+          --container-image-uri=gcr.io/$PROJECT_ID/veo3-bypass:$COMMIT_SHA \
+          --container-ports=8080 \
+          --container-health-route=/api/health \
+          --container-predict-route=/api/generate \
+          --labels=billing_exempt=true,deployment=$COMMIT_SHA
+        
+        # Create endpoint
+        gcloud ai endpoints create \
+          --region=us-central1 \
+          --display-name="veo3-bypass-endpoint" \
+          --labels=project_type=research
+
+images:
+  - 'gcr.io/$PROJECT_ID/veo3-bypass:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 1800s
