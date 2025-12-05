@@ -1,0 +1,11 @@
+{
+  "name": "veo3-generator-free",
+  "version": "1.0.0",
+  "description": "FREE Veo3 Generator with billing bypass",
+  "scripts": {
+    "start": "python app.py"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
