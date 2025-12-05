@@ -1,24 +1,25 @@
-# Dockerfile untuk Vertex AI deployment
+# Dockerfile untuk Vertex AI deployment (FIXED VERSION)
 FROM python:3.9-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8080
+    PORT=8080 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
+# Install system dependencies (FIXED untuk Debian baru)
 RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
+    software-properties-common \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Google Cloud SDK (untuk authentication)
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" \
-    | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
-    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
-    | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
-    && apt-get update -y \
-    && apt-get install google-cloud-sdk -y
+# Install Google Cloud SDK (CARA YANG BENAR untuk Debian 12+)
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" > /etc/apt/sources.list.d/google-cloud-sdk.list \
+    && curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg \
+    && apt-get update \
+    && apt-get install -y google-cloud-cli \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
